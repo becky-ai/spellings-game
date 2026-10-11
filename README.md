@@ -1,12 +1,21 @@
 # Feed the Animals – spelling practice
 
-A spelling game for young children. The game reads a word aloud in a British English voice, the child spells it on a big on-screen keyboard, and each correct word earns a treat to feed Momo the monkey, Pip the guinea pig or Bao the panda.
+A spelling game for young children. The game reads a word aloud in a British English voice, the child spells it on a big on-screen keyboard, and each correct word earns a treat to feed an animal.
+
+Each player has her own words, her own animals and her own treat counts:
+
+| Player | Animals |
+|---|---|
+| Ava | Momo the monkey, Pip the guinea pig, Bao the panda |
+| Izzy | Pebble the guinea pig, Bean the capybara, Moss the sloth |
+
+Players and animals are set in the `PLAYERS` list near the top of the script in `index.html`.
 
 Everything is in one file, `index.html`. It has no install, no account and no internet calls.
 
 ## Adding this week's words
-1. Tap **⚙️ Grown-ups** (top right) and answer the times-table question.
-2. Type one word per line. To have a word read the way a spelling test reads it (word, sentence, word), add a sentence after a `|`:
+1. Tap **⚙️ Grown-ups** (top right) and answer the multiplication question.
+2. There is a box for each child. Type one word per line. To have a word read the way a spelling test reads it (word, sentence, word), add a sentence after a `|`:
    ```
    said
    because | I smiled because it was sunny
@@ -14,7 +23,7 @@ Everything is in one file, `index.html`. It has no install, no account and no in
    ```
 3. Tap **Save spellings**. The words stay on that tablet until you change them.
 
-Use **Test voice** to check that a British voice is being used. If none is found, the settings screen explains how to install one on iPad or Android.
+Use the **Voice** drop-down to choose a British voice; it's marked "(woman)" or "(man)" where known. To get more voices, follow the steps on the settings screen for iPad or Android.
 
 ## How a round works
 - The words come in a random order. The 🔊 button repeats the word and 🐌 says it slowly.

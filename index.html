@@ -194,6 +194,28 @@
     border-radius: 999px;
   }
 
+  /* ---------- Who's playing ---------- */
+  #playersScreen { justify-content: center; gap: 24px; text-align: center; }
+  .player-cards { display: flex; gap: clamp(16px, 4vw, 40px); justify-content: center; flex-wrap: wrap; width: 100%; }
+  .player-card {
+    width: min(400px, 44vw);
+    min-width: 280px;
+    background: #fff;
+    border-radius: 32px;
+    border: 6px solid var(--player-colour);
+    box-shadow: 0 8px 0 var(--player-dark);
+    padding: 18px 20px 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .player-card:active { transform: translateY(5px); box-shadow: 0 3px 0 var(--player-dark); }
+  .player-name { font-size: clamp(42px, 6vw, 60px); font-weight: 900; color: var(--player-dark); line-height: 1.1; }
+  .player-animals { display: flex; justify-content: center; gap: 6px; width: 100%; }
+  .player-animals .animal { width: 31%; max-width: 110px; }
+  .change-player { font-size: 20px; }
+
   /* ---------- Animals ---------- */
   .animal svg { width: 100%; height: auto; display: block; overflow: visible; }
   .animal .mouth { transform-box: fill-box; transform-origin: center; }
@@ -501,7 +523,9 @@
   .panel-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
   .panel-buttons .btn { font-size: 22px; padding: 12px 24px; }
 
-  .settings-panel { max-width: 720px; }
+  .settings-panel { max-width: 880px; }
+  .word-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .word-lists { grid-template-columns: 1fr; } }
   .settings-panel h2 { text-align: left; }
   .settings-panel label { display: block; font-size: 18px; font-weight: 800; margin-bottom: 6px; }
   .help { font-size: 16px; color: var(--ink-soft); margin: 0 0 10px; line-height: 1.45; }
@@ -523,6 +547,17 @@
   .voice-status { font-size: 17px; font-weight: 700; margin: 0 0 10px; }
   .voice-status.warn { color: var(--orange-dark); }
   .voice-status.ok { color: var(--green-dark); }
+  .voice-select {
+    font: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 3px solid #CBD5E1;
+    background: #fff;
+    max-width: 100%;
+  }
+  .voice-more { margin-top: 12px; }
   .settings-row { display: flex; gap: 10px; flex-wrap: wrap; }
   .settings-row .btn { font-size: 18px; padding: 10px 20px; box-shadow: 0 4px 0 var(--yellow-dark); }
   .settings-row .btn-plain { box-shadow: 0 4px 0 #94A3B8; }
@@ -588,12 +623,20 @@
   </header>
 
   <main>
-    <!-- Start -->
-    <section class="screen" id="startScreen">
+    <!-- Who's playing? -->
+    <section class="screen" id="playersScreen">
       <h1 class="big-title">Feed the Animals!</h1>
+      <p class="start-info">Who's playing?</p>
+      <div class="player-cards" id="playerCards"></div>
+    </section>
+
+    <!-- Start (for the chosen player) -->
+    <section class="screen" id="startScreen" hidden>
+      <h1 class="big-title" id="startTitle"></h1>
       <div class="animal-row" id="startAnimals"></div>
       <p class="start-info" id="startInfo"></p>
       <button class="btn btn-huge" id="playBtn">Let's play! ▶</button>
+      <button class="small-btn change-player" id="changePlayerBtn">👥 Change player</button>
     </section>
 
     <!-- Play -->
@@ -659,14 +702,12 @@
 <div class="overlay" id="settingsOverlay" hidden>
   <div class="panel settings-panel">
     <h2>This week's spellings</h2>
-    <label for="wordInput">One word per line</label>
     <p class="help">
-      You can add a sentence after a <code>|</code> and it will be read out like a spelling test:
+      One word per line. 
+You can add a sentence after a <code>|</code> and it will be read out like a spelling test:
       word, sentence, word. For example: <code>because | I smiled because it was sunny</code>
     </p>
-    <textarea class="word-input" id="wordInput" rows="10"
-              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="true"
-              placeholder="said&#10;because | I smiled because it was sunny&#10;friend&#10;school"></textarea>
+    <div class="word-lists" id="wordLists"></div>
     <p class="form-error" id="formError" role="alert"></p>
     <div class="settings-row">
       <button class="btn btn-green" id="saveWordsBtn">Save spellings</button>
@@ -676,21 +717,22 @@
     <div class="settings-section">
       <label>Voice</label>
       <p class="voice-status" id="voiceStatus"></p>
-      <p class="help" id="voiceHelp" hidden>
-        No British English voice was found, so the default voice will be used.<br>
-        <strong>iPad:</strong> Settings → Accessibility → Spoken Content → Voices → English → choose a UK voice
-        (e.g. Daniel or Kate) and download it.<br>
-        <strong>Android:</strong> Settings → search "Text-to-speech" → Google → install English (United Kingdom).
-        Then reload this page.
-      </p>
       <div class="settings-row">
+        <select class="voice-select" id="voiceSelect" aria-label="Choose a voice"></select>
         <button class="btn" id="testVoiceBtn">🔊 Test voice</button>
       </div>
+      <p class="help voice-more">
+        <strong>Want more voices?</strong><br>
+        <strong>iPad:</strong> Settings → Accessibility → Spoken Content → Voices → English → English (UK).
+        Download a voice (Kate, Serena, Stephanie and Martha are women's voices), then reload this page.<br>
+        <strong>Android:</strong> Settings → search "Text-to-speech" → Google → install English (United Kingdom).
+        Tap the ⚙️ next to it to choose which UK voice is used.
+      </p>
     </div>
 
     <div class="settings-section">
       <label>Animal treats</label>
-      <p class="help">Treat counts build up across the week. Reset them to start fresh.</p>
+      <p class="help">Treat counts build up across the week. This resets both girls' animals to zero.</p>
       <div class="settings-row">
         <button class="btn btn-plain" id="resetTreatsBtn">Reset treat counts</button>
       </div>
@@ -709,25 +751,66 @@
      Data
      ============================================================ */
 
+  // Per-player keys are `${prefix}.${playerId}`. The un-suffixed keys are from the
+  // single-player version and are migrated to Ava on first load.
   const STORAGE_WORDS = 'spellings.words';
   const STORAGE_TREATS = 'spellings.animals';
+  const STORAGE_VOICE = 'spellings.voice';
   const MAX_WORDS = 20;
 
-  /** The animals she can feed, with three treats each. */
-  const ANIMALS = [
+  /** Each kind of animal and the three treats it can be fed. */
+  const SPECIES = {
+    monkey: {
+      kind: 'monkey',
+      treats: [{ emoji: '🍌', name: 'banana', plural: 'bananas' }, { emoji: '🥭', name: 'mango', plural: 'mangoes' },
+               { emoji: '🥥', name: 'coconut', plural: 'coconuts' }],
+    },
+    guineapig: {
+      kind: 'guinea pig',
+      treats: [{ emoji: '🥕', name: 'carrot', plural: 'carrots' }, { emoji: '🥒', name: 'cucumber', plural: 'cucumbers' },
+               { emoji: '🍓', name: 'strawberry', plural: 'strawberries' }],
+    },
+    panda: {
+      kind: 'panda',
+      treats: [{ emoji: '🎋', name: 'bamboo', plural: 'bamboo' }, { emoji: '🍎', name: 'apple', plural: 'apples' },
+               { emoji: '🍐', name: 'pear', plural: 'pears' }],
+    },
+    capybara: {
+      kind: 'capybara',
+      treats: [{ emoji: '🍉', name: 'watermelon', plural: 'watermelon' }, { emoji: '🌽', name: 'corn', plural: 'corn' },
+               { emoji: '🍊', name: 'orange', plural: 'oranges' }],
+    },
+    sloth: {
+      kind: 'sloth',
+      treats: [{ emoji: '🍃', name: 'leaves', plural: 'leaves' }, { emoji: '🌺', name: 'flower', plural: 'flowers' },
+               { emoji: '🍠', name: 'sweet potato', plural: 'sweet potatoes' }],
+    },
+  };
+
+  /** The children, each with their own animals. `art` picks the drawing; `id` keys the treat count. */
+  const PLAYERS = [
     {
-      id: 'monkey', name: 'Momo', kind: 'monkey',
-      treats: [{ emoji: '🍌', name: 'banana' }, { emoji: '🥭', name: 'mango' }, { emoji: '🥥', name: 'coconut' }],
+      id: 'ava', name: 'Ava', colour: '#F472B6', dark: '#DB2777',
+      animals: [
+        { id: 'monkey', species: 'monkey', art: 'monkey', name: 'Momo' },
+        { id: 'guineapig', species: 'guineapig', art: 'guineapig', name: 'Pip' },
+        { id: 'panda', species: 'panda', art: 'panda', name: 'Bao' },
+      ],
     },
     {
-      id: 'guineapig', name: 'Pip', kind: 'guinea pig',
-      treats: [{ emoji: '🥕', name: 'carrot' }, { emoji: '🥒', name: 'cucumber' }, { emoji: '🍓', name: 'strawberry' }],
-    },
-    {
-      id: 'panda', name: 'Bao', kind: 'panda',
-      treats: [{ emoji: '🎋', name: 'bamboo' }, { emoji: '🍎', name: 'apple' }, { emoji: '🍐', name: 'pear' }],
+      id: 'izzy', name: 'Izzy', colour: '#A78BFA', dark: '#7C3AED',
+      animals: [
+        { id: 'guineapig', species: 'guineapig', art: 'guineapigGrey', name: 'Pebble' },
+        { id: 'capybara', species: 'capybara', art: 'capybara', name: 'Bean' },
+        { id: 'sloth', species: 'sloth', art: 'sloth', name: 'Moss' },
+      ],
     },
   ];
+
+  let player = PLAYERS[0];
+
+  /** The current player's animals, with their species details (kind, treats) merged in. */
+  const animals = () => player.animals.map((a) => ({ ...SPECIES[a.species], ...a }));
 
   const PRAISE = ['Brilliant!', 'Amazing!', 'Super spelling!', 'Fantastic!', 'You got it!',
                   'Wow, well done!', 'Spot on!', 'Marvellous!', 'Superstar!'];
@@ -782,7 +865,37 @@
         <path d="M100 131v7" stroke="#1F2937" stroke-width="3" stroke-linecap="round"/>
         <ellipse class="mouth" cx="100" cy="148" rx="14" ry="6" fill="#7F1D1D"/>
       </svg>`,
+    capybara: `
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <ellipse cx="54" cy="52" rx="15" ry="12" fill="#6B4A2E"/><ellipse cx="146" cy="52" rx="15" ry="12" fill="#6B4A2E"/>
+        <rect x="36" y="44" width="128" height="142" rx="60" fill="#A97B50"/>
+        <circle cx="100" cy="40" r="17" fill="#FB923C"/>
+        <path d="M101 24c3-9 12-12 19-9-3 8-11 11-19 9z" fill="#22C55E"/>
+        <rect x="54" y="112" width="92" height="70" rx="35" fill="#8C6239"/>
+        <g class="eyes"><circle cx="70" cy="92" r="8" fill="#1C1917"/><circle cx="130" cy="92" r="8" fill="#1C1917"/>
+          <circle cx="72" cy="89" r="2.8" fill="#fff"/><circle cx="132" cy="89" r="2.8" fill="#fff"/></g>
+        <path d="M60 84q10-7 20 0M120 84q10-7 20 0" stroke="#6B4A2E" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <circle cx="48" cy="112" r="8" fill="#F9A8D4" opacity=".6"/><circle cx="152" cy="112" r="8" fill="#F9A8D4" opacity=".6"/>
+        <ellipse cx="86" cy="132" rx="6" ry="8" fill="#3F2A1A"/><ellipse cx="114" cy="132" rx="6" ry="8" fill="#3F2A1A"/>
+        <ellipse class="mouth" cx="100" cy="161" rx="12" ry="5" fill="#7F1D1D"/>
+      </svg>`,
+    sloth: `
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <path d="M72 36q8 14 18 2q8 14 20 0q8 14 18 2" stroke="#8D7B68" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="100" cy="106" r="76" fill="#8D7B68"/>
+        <ellipse cx="100" cy="116" rx="62" ry="54" fill="#EADBC8"/>
+        <ellipse cx="70" cy="104" rx="27" ry="12" fill="#4A3B2F" transform="rotate(-18 70 104)"/>
+        <ellipse cx="130" cy="104" rx="27" ry="12" fill="#4A3B2F" transform="rotate(18 130 104)"/>
+        <g class="eyes"><circle cx="74" cy="102" r="7" fill="#fff"/><circle cx="126" cy="102" r="7" fill="#fff"/>
+          <circle cx="75" cy="103" r="4" fill="#111"/><circle cx="125" cy="103" r="4" fill="#111"/></g>
+        <circle cx="62" cy="136" r="8" fill="#F9A8D4" opacity=".7"/><circle cx="138" cy="136" r="8" fill="#F9A8D4" opacity=".7"/>
+        <ellipse cx="100" cy="127" rx="10" ry="7" fill="#3B2F25"/>
+        <ellipse class="mouth" cx="100" cy="149" rx="14" ry="5" fill="#7F1D1D"/>
+      </svg>`,
   };
+  // Izzy's guinea pig is grey and white, so it looks different from Ava's.
+  ANIMAL_SVG.guineapigGrey = ANIMAL_SVG.guineapig
+    .replace(/#E08A3C/g, '#A8A29E').replace(/#B45309/g, '#78716C').replace(/#7C2D12/g, '#44403C');
 
   /* ============================================================
      Helpers
@@ -832,10 +945,9 @@
     }
   }
 
-  function makeAnimal(id, extraClass = 'idle') {
+  function makeAnimal(art, extraClass = 'idle') {
     const wrapper = make('div', `animal ${extraClass}`.trim());
-    wrapper.dataset.animal = id;
-    wrapper.innerHTML = ANIMAL_SVG[id];
+    wrapper.innerHTML = ANIMAL_SVG[art];
     return wrapper;
   }
 
@@ -852,16 +964,32 @@
      Saved state
      ============================================================ */
 
-  function loadWords() {
-    const stored = loadJson(STORAGE_WORDS, []);
+  function cleanWords(stored) {
     if (!Array.isArray(stored)) return [];
     return stored
       .filter((item) => item && typeof item.word === 'string' && item.word.trim())
       .map((item) => ({ word: item.word.trim(), sentence: typeof item.sentence === 'string' ? item.sentence.trim() : '' }));
   }
 
-  let words = loadWords();
-  const treatCounts = Object.assign({ monkey: 0, guineapig: 0, panda: 0 }, loadJson(STORAGE_TREATS, {}));
+  /** Loads a player's saved value, falling back to the single-player key for Ava. */
+  function loadForPlayer(prefix, playerId, fallback) {
+    const own = loadJson(`${prefix}.${playerId}`, null);
+    if (own != null) return own;
+    if (playerId === PLAYERS[0].id) return loadJson(prefix, fallback);
+    return fallback;
+  }
+
+  const wordsByPlayer = {};
+  const treatsByPlayer = {};
+  PLAYERS.forEach((p) => {
+    wordsByPlayer[p.id] = cleanWords(loadForPlayer(STORAGE_WORDS, p.id, []));
+    const zeroes = Object.fromEntries(p.animals.map((a) => [a.id, 0]));
+    treatsByPlayer[p.id] = Object.assign(zeroes, loadForPlayer(STORAGE_TREATS, p.id, {}));
+  });
+
+  const currentWords = () => wordsByPlayer[player.id];
+  const treatCounts = () => treatsByPlayer[player.id];
+  const saveTreats = (playerId) => saveJson(`${STORAGE_TREATS}.${playerId}`, treatsByPlayer[playerId]);
 
   /* ============================================================
      Sound effects (synthesised, no files needed)
@@ -910,26 +1038,61 @@
      ============================================================ */
 
   const speechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
-  const PREFERRED_VOICES = ['daniel', 'kate', 'serena', 'arthur', 'martha', 'stephanie', 'oliver',
-                            'google uk english female', 'google uk english male'];
+  // Women's voices first, so the automatic choice is a woman's voice when the device has one.
+  const FEMALE_VOICES = ['serena', 'kate', 'stephanie', 'martha', 'google uk english female'];
+  const MALE_VOICES = ['daniel', 'arthur', 'oliver', 'google uk english male'];
+  const PREFERRED_VOICES = [...FEMALE_VOICES, ...MALE_VOICES];
   let ukVoice = null;
 
   const voiceLang = (voice) => (voice.lang || '').replace('_', '-').toLowerCase();
+  const voiceKey = (voice) => voice.voiceURI || voice.name;
 
-  /** Chooses the best available British English voice, or null. */
+  function britishVoices() {
+    if (!speechSupported) return [];
+    return window.speechSynthesis.getVoices().filter((v) => voiceLang(v).startsWith('en-gb'));
+  }
+
+  /** Chooses the grown-up's saved voice if it is available, otherwise the best British voice, or null. */
   function chooseVoice() {
-    if (!speechSupported) return null;
-    const british = window.speechSynthesis.getVoices().filter((v) => voiceLang(v).startsWith('en-gb'));
+    const british = britishVoices();
+    const savedKey = loadJson(STORAGE_VOICE, '');
+    const saved = savedKey && british.find((v) => voiceKey(v) === savedKey);
+    if (saved) return saved;
     for (const name of PREFERRED_VOICES) {
-      const match = british.find((v) => v.name.toLowerCase().includes(name));
-      if (match) return match;
+      // Prefer the higher-quality "Enhanced"/"Premium" downloads when there are several.
+      const matches = british.filter((v) => v.name.toLowerCase().includes(name));
+      const best = matches.find((v) => /enhanced|premium/i.test(v.name)) || matches[0];
+      if (best) return best;
     }
     return british.find((v) => v.localService) || british[0] || null;
+  }
+
+  function describeVoice(voice) {
+    const name = voice.name.toLowerCase();
+    if (FEMALE_VOICES.some((n) => name.includes(n))) return `${voice.name} (woman)`;
+    if (MALE_VOICES.some((n) => name.includes(n))) return `${voice.name} (man)`;
+    return voice.name;
   }
 
   function refreshVoice() {
     ukVoice = chooseVoice();
     renderVoiceStatus();
+    renderVoiceSelect();
+  }
+
+  /** Fills the grown-ups voice picker with the British voices on this device. */
+  function renderVoiceSelect() {
+    const select = $('voiceSelect');
+    if (!select) return;
+    const british = britishVoices();
+    select.innerHTML = '';
+    select.hidden = british.length === 0;
+    british.forEach((voice) => {
+      const option = make('option', '', describeVoice(voice));
+      option.value = voiceKey(voice);
+      select.append(option);
+    });
+    if (ukVoice) select.value = voiceKey(ukVoice);
   }
 
   if (speechSupported) {
@@ -989,17 +1152,14 @@
     if (!speechSupported) {
       status.textContent = '⚠️ This browser cannot read words aloud. Try Safari on iPad or Chrome on Android.';
       status.className = 'voice-status warn';
-      $('voiceHelp').hidden = true;
       return;
     }
     if (ukVoice) {
-      status.textContent = `✓ Using British voice: ${ukVoice.name}`;
+      status.textContent = `✓ Using British voice: ${describeVoice(ukVoice)}`;
       status.className = 'voice-status ok';
-      $('voiceHelp').hidden = true;
     } else {
-      status.textContent = '⚠️ No British English voice found yet';
+      status.textContent = '⚠️ No British English voice found – the default voice will be used. See below to add one.';
       status.className = 'voice-status warn';
-      $('voiceHelp').hidden = false;
     }
   }
 
@@ -1007,29 +1167,61 @@
      Screens
      ============================================================ */
 
-  let currentScreen = 'start';
+  let currentScreen = 'players';
 
   function showScreen(name) {
     currentScreen = name;
+    $('playersScreen').hidden = name !== 'players';
     $('startScreen').hidden = name !== 'start';
     $('playScreen').hidden = name !== 'play';
     $('endScreen').hidden = name !== 'end';
-    $('homeBtn').hidden = name === 'start';
+    $('homeBtn').hidden = name === 'start' || name === 'players';
     $('progress').hidden = name !== 'play';
   }
 
   function animalTile(animal, animalClass) {
     const tile = make('div', 'animal-tile');
-    tile.append(makeAnimal(animal.id, animalClass));
+    tile.append(makeAnimal(animal.art, animalClass));
     tile.append(make('div', 'animal-name', animal.name));
-    tile.append(make('div', 'heart-count', `❤️ ${treatCounts[animal.id]}`));
+    tile.append(make('div', 'heart-count', `❤️ ${treatCounts()[animal.id]}`));
     return tile;
   }
 
+  function renderPlayers() {
+    const cards = $('playerCards');
+    cards.innerHTML = '';
+    PLAYERS.forEach((p) => {
+      const card = make('button', 'player-card');
+      card.style.setProperty('--player-colour', p.colour);
+      card.style.setProperty('--player-dark', p.dark);
+      card.setAttribute('aria-label', `${p.name} is playing`);
+      const faces = make('div', 'player-animals');
+      p.animals.forEach((a, i) => {
+        const art = makeAnimal(a.art, 'idle');
+        art.querySelector('svg').style.animationDelay = `${i * -1}s`;
+        faces.append(art);
+      });
+      card.append(make('div', 'player-name', p.name), faces);
+      card.addEventListener('click', () => choosePlayer(p));
+      cards.append(card);
+    });
+  }
+
+  function choosePlayer(chosen) {
+    player = chosen;
+    getAudio();
+    sfx.pop();
+    renderStart();
+    showScreen('start');
+    speak([`Hi ${player.name}! Your animals are hungry!`]);
+  }
+
   function renderStart() {
+    $('startTitle').textContent = `Hi ${player.name}!`;
+    const words = currentWords();
     const row = $('startAnimals');
     row.innerHTML = '';
-    ANIMALS.forEach((animal, i) => {
+    animals().forEach((animal, i) => {
       const tile = animalTile(animal, 'idle');
       tile.querySelector('svg').style.animationDelay = `${i * -1}s`;
       tile.querySelector('.eyes').style.animationDelay = `${i * 1.3}s`;
@@ -1042,7 +1234,7 @@
       info.textContent = 'Ask a grown-up to add this week\'s spellings ⚙️';
       playBtn.disabled = true;
     } else {
-      info.textContent = `${words.length} spelling${words.length === 1 ? '' : 's'} to practise. The animals are hungry!`;
+      info.textContent = `${words.length} spelling${words.length === 1 ? '' : 's'} to practise. Your animals are hungry!`;
       playBtn.disabled = false;
     }
   }
@@ -1065,6 +1257,7 @@
   };
 
   function startRound() {
+    const words = currentWords();
     if (words.length === 0) return;
     getAudio(); // unlock audio on this tap
     round.items = shuffle(words).map((w, index) => ({ ...w, index, status: 'pending', firstTry: false }));
@@ -1088,10 +1281,9 @@
     round.lastAttempt = '';
     round.busy = false;
 
-    const mascotId = pick(ANIMALS).id;
     const mascot = $('mascot');
     mascot.className = 'mascot animal idle';
-    mascot.innerHTML = ANIMAL_SVG[mascotId];
+    mascot.innerHTML = ANIMAL_SVG[pick(animals()).art];
 
     setBubble(round.current.retry ? 'Let\'s try this one again!' : pick(LISTEN));
     $('reveal').hidden = true;
@@ -1187,7 +1379,7 @@
   function buildKeyboard() {
     // Only show extra keys (apostrophe, hyphen, space) if this week's words need them.
     const extras = [];
-    const all = words.map((w) => normalise(w.word)).join('');
+    const all = currentWords().map((w) => normalise(w.word)).join('');
     if (all.includes("'")) extras.push("'");
     if (all.includes('-')) extras.push('-');
     const needsSpace = all.includes(' ');
@@ -1393,13 +1585,13 @@
 
     const grid = $('feedAnimals');
     grid.innerHTML = '';
-    ANIMALS.forEach((animal, i) => {
+    animals().forEach((animal, i) => {
       const card = make('button', 'feed-card');
       card.dataset.animal = animal.id;
       card.setAttribute('aria-label', `Feed ${animal.name} the ${animal.kind}`);
-      const art = makeAnimal(animal.id, 'idle');
+      const art = makeAnimal(animal.art, 'idle');
       art.querySelector('svg').style.animationDelay = `${i * -1}s`;
-      card.append(art, make('div', 'animal-name', animal.name), make('div', 'heart-count', `❤️ ${treatCounts[animal.id]}`));
+      card.append(art, make('div', 'animal-name', animal.name), make('div', 'heart-count', `❤️ ${treatCounts()[animal.id]}`));
       card.addEventListener('click', () => chooseAnimal(animal.id));
       grid.append(card);
     });
@@ -1412,7 +1604,7 @@
     if (feed.feeding) return;
     sfx.pop();
     feed.chosen = id;
-    const animal = ANIMALS.find((a) => a.id === id);
+    const animal = animals().find((a) => a.id === id);
 
     document.querySelectorAll('.feed-card').forEach((card) => {
       const isChosen = card.dataset.animal === id;
@@ -1445,11 +1637,11 @@
 
     art.className = 'animal chomp';
     sfx.chomp();
-    speak([`Yum yum! ${animal.name} loves ${treat.name === 'bamboo' ? 'bamboo' : treat.name + 's'}!`]);
-    treatCounts[animal.id] += 1;
+    speak([`Yum yum! ${animal.name} loves ${treat.plural}!`]);
+    treatCounts()[animal.id] += 1;
     round.treatsGiven += 1;
-    saveJson(STORAGE_TREATS, treatCounts);
-    card.querySelector('.heart-count').textContent = `❤️ ${treatCounts[animal.id]}`;
+    saveTreats(player.id);
+    card.querySelector('.heart-count').textContent = `❤️ ${treatCounts()[animal.id]}`;
     floatHearts(art);
 
     await wait(1400);
@@ -1526,7 +1718,7 @@
 
     const row = $('endAnimals');
     row.innerHTML = '';
-    ANIMALS.forEach((animal, i) => {
+    animals().forEach((animal, i) => {
       const tile = animalTile(animal, 'dance');
       tile.querySelector('svg').style.animationDelay = `${i * -0.3}s`;
       row.append(tile);
@@ -1567,7 +1759,7 @@
   let gateAnswer = 0;
 
   function openGate() {
-    const a = 3 + Math.floor(Math.random() * 7);
+    const a = 13 + Math.floor(Math.random() * 7);
     const b = 3 + Math.floor(Math.random() * 7);
     gateAnswer = a * b;
     $('gateQuestion').textContent = `${a} × ${b} = ?`;
@@ -1594,7 +1786,10 @@
 
   function openSettings() {
     stopSpeaking();
-    $('wordInput').value = words.map((w) => (w.sentence ? `${w.word} | ${w.sentence}` : w.word)).join('\n');
+    PLAYERS.forEach((p) => {
+      $(`wordInput-${p.id}`).value = wordsByPlayer[p.id]
+        .map((w) => (w.sentence ? `${w.word} | ${w.sentence}` : w.word)).join('\n');
+    });
     $('formError').textContent = '';
     refreshVoice();
     $('settingsOverlay').hidden = false;
@@ -1614,38 +1809,68 @@
       }
       list.push({ word, sentence });
     }
-    if (list.length === 0) return { error: 'Please add at least one word.' };
     if (list.length > MAX_WORDS) return { error: `That's ${list.length} words – please keep it to ${MAX_WORDS} or fewer.` };
     return { list };
   }
 
+  /** Builds one word box per player in the grown-ups screen. */
+  function buildWordInputs() {
+    const lists = $('wordLists');
+    PLAYERS.forEach((p) => {
+      const wrapper = make('div');
+      const label = make('label', '', `${p.name}'s spellings`);
+      label.htmlFor = `wordInput-${p.id}`;
+      label.style.color = p.dark;
+      const textarea = make('textarea', 'word-input');
+      textarea.id = `wordInput-${p.id}`;
+      textarea.rows = 10;
+      textarea.placeholder = 'said\nbecause | I smiled because it was sunny\nfriend';
+      ['autocomplete', 'autocorrect', 'autocapitalize'].forEach((attr) => textarea.setAttribute(attr, 'off'));
+      textarea.spellcheck = true;
+      wrapper.append(label, textarea);
+      lists.append(wrapper);
+    });
+  }
+
   function onSaveWords() {
-    const result = parseWordList($('wordInput').value);
-    if (result.error) {
-      $('formError').textContent = result.error;
-      return;
+    const parsed = {};
+    for (const p of PLAYERS) {
+      const result = parseWordList($(`wordInput-${p.id}`).value);
+      if (result.error) {
+        $('formError').textContent = `${p.name}: ${result.error}`;
+        return;
+      }
+      parsed[p.id] = result.list;
     }
-    words = result.list;
-    const saved = saveJson(STORAGE_WORDS, words);
+    let saved = true;
+    PLAYERS.forEach((p) => {
+      wordsByPlayer[p.id] = parsed[p.id];
+      saved = saveJson(`${STORAGE_WORDS}.${p.id}`, parsed[p.id]) && saved;
+    });
     $('settingsOverlay').hidden = true;
-    showToast(saved ? `Saved ${words.length} spellings ✓` : 'Saved for now, but this browser could not remember them');
+    const summary = PLAYERS.map((p) => `${p.name} ${parsed[p.id].length}`).join(', ');
+    showToast(saved ? `Saved ✓  ${summary}` : 'Saved for now, but this browser could not remember them');
     goHome();
   }
 
   function onResetTreats() {
-    if (!window.confirm('Reset all the animals\' treat counts to zero?')) return;
-    ANIMALS.forEach((a) => { treatCounts[a.id] = 0; });
-    saveJson(STORAGE_TREATS, treatCounts);
+    if (!window.confirm('Reset all the animals\' treat counts to zero (both girls)?')) return;
+    PLAYERS.forEach((p) => {
+      Object.keys(treatsByPlayer[p.id]).forEach((id) => { treatsByPlayer[p.id][id] = 0; });
+      saveTreats(p.id);
+    });
     showToast('Treat counts reset');
-    renderStart();
+    if (currentScreen === 'start') renderStart();
   }
 
+  /** Leaves any round and returns to the current player's start screen (or the player picker). */
   function goHome() {
     stopSpeaking();
     $('feedOverlay').hidden = true;
     round.busy = false;
     round.queue = [];
     round.current = null;
+    if (currentScreen === 'players') return;
     renderStart();
     showScreen('start');
   }
@@ -1667,16 +1892,25 @@
   $('speakBtn').addEventListener('click', () => { if (round.current) sayCurrentWord(false); });
   $('slowBtn').addEventListener('click', () => { if (round.current) sayCurrentWord(true); });
   $('hideBtn').addEventListener('click', onHide);
+  $('changePlayerBtn').addEventListener('click', () => {
+    stopSpeaking();
+    showScreen('players');
+  });
 
   $('grownUpsBtn').addEventListener('click', openGate);
   $('gateForm').addEventListener('submit', onGateSubmit);
   $('gateCancel').addEventListener('click', () => { $('gateOverlay').hidden = true; });
   $('saveWordsBtn').addEventListener('click', onSaveWords);
   $('closeSettingsBtn').addEventListener('click', () => { $('settingsOverlay').hidden = true; });
-  $('testVoiceBtn').addEventListener('click', () => {
-    refreshVoice();
-    const sample = words[0] ? words[0].word : 'because';
+  function testVoice() {
+    const sample = currentWords()[0] ? currentWords()[0].word : 'because';
     speak([`Hello! Let's practise our spellings. Your first word is ${sample}.`]);
+  }
+  $('testVoiceBtn').addEventListener('click', testVoice);
+  $('voiceSelect').addEventListener('change', (event) => {
+    saveJson(STORAGE_VOICE, event.target.value);
+    refreshVoice();
+    testVoice();
   });
   $('resetTreatsBtn').addEventListener('click', onResetTreats);
 
@@ -1711,8 +1945,9 @@
     if (document.hidden) stopSpeaking();
   });
 
-  renderStart();
-  showScreen('start');
+  buildWordInputs();
+  renderPlayers();
+  showScreen('players');
 })();
 </script>
 </body>
