@@ -504,22 +504,7 @@
   }
   .end-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
 
-  /* Grown-ups gate & settings */
-  .gate-panel { max-width: 440px; text-align: center; }
-  .gate-question { font-size: 34px; font-weight: 900; margin: 6px 0 16px; }
-  .gate-input {
-    font: inherit;
-    font-size: 32px;
-    font-weight: 800;
-    width: 160px;
-    text-align: center;
-    padding: 10px;
-    border-radius: 16px;
-    border: 3px solid #CBD5E1;
-    -webkit-user-select: text;
-    user-select: text;
-  }
-  .gate-input.shake { animation: shake .45s ease; border-color: var(--orange); }
+  /* Grown-ups settings */
   .panel-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
   .panel-buttons .btn { font-size: 22px; padding: 12px 24px; }
 
@@ -542,7 +527,7 @@
     -webkit-user-select: text;
     user-select: text;
   }
-  .word-input:focus, .gate-input:focus { outline: none; border-color: var(--blue); }
+  .word-input:focus { outline: none; border-color: var(--blue); }
   .settings-section { margin-top: 20px; padding-top: 16px; border-top: 2px solid #E2E8F0; }
   .voice-status { font-size: 17px; font-weight: 700; margin: 0 0 10px; }
   .voice-status.warn { color: var(--orange-dark); }
@@ -682,20 +667,6 @@
     <div class="feed-animals" id="feedAnimals"></div>
     <div class="treats" id="treats"></div>
   </div>
-</div>
-
-<!-- Grown-ups gate -->
-<div class="overlay" id="gateOverlay" hidden>
-  <form class="panel gate-panel" id="gateForm" autocomplete="off">
-    <h2>Grown-ups only</h2>
-    <div class="gate-question" id="gateQuestion"></div>
-    <input class="gate-input" id="gateInput" type="text" inputmode="numeric" pattern="[0-9]*"
-           autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Answer">
-    <div class="panel-buttons">
-      <button type="button" class="btn btn-plain" id="gateCancel">Cancel</button>
-      <button type="submit" class="btn btn-green">Go</button>
-    </div>
-  </form>
 </div>
 
 <!-- Grown-ups settings -->
@@ -1112,11 +1083,19 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
     if (on) speakingTimer = setTimeout(() => setSpeaking(false), 12000);
   }
 
-  /** Speaks a list of phrases in order. */
-  function speak(phrases, rate = 0.85) {
+  let speechGeneration = 0;
+  let cancelGapUntil = 0;
+
+  /**
+   * Speaks a list of phrases in order. By default they queue after anything already being said,
+   * so one line never cuts off another; pass { interrupt: true } to stop the current speech first.
+   */
+  function speak(phrases, rate = 0.85, { interrupt = false } = {}) {
     if (!speechSupported) return;
     const synth = window.speechSynthesis;
+    const generation = speechGeneration;
     const go = () => {
+      if (generation !== speechGeneration) return;
       synth.resume();
       phrases.forEach((text, index) => {
         const utterance = new SpeechSynthesisUtterance(text);
@@ -1132,16 +1111,18 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
         synth.speak(utterance);
       });
     };
-    // iOS can drop an utterance queued straight after cancel(), so leave a short gap.
-    if (synth.speaking || synth.pending) {
+    if (interrupt && (synth.speaking || synth.pending)) {
       synth.cancel();
-      setTimeout(go, 120);
-    } else {
-      go();
+      // iOS can drop an utterance queued straight after cancel(), so leave a short gap.
+      cancelGapUntil = Date.now() + 120;
     }
+    const delay = cancelGapUntil - Date.now();
+    if (delay > 0) setTimeout(go, delay);
+    else go();
   }
 
   function stopSpeaking() {
+    speechGeneration += 1;
     if (speechSupported) window.speechSynthesis.cancel();
     setSpeaking(false);
   }
@@ -1296,11 +1277,12 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
     setTimeout(() => sayCurrentWord(false), 450);
   }
 
-  function sayCurrentWord(slow) {
+  /** Says the current word. Pass interrupt when a button tap should cut in over other speech. */
+  function sayCurrentWord(slow, interrupt = false) {
     const { item } = round.current;
-    if (slow) speak([item.word], 0.5);
-    else if (item.sentence) speak([item.word, item.sentence, item.word]);
-    else speak([item.word, item.word]);
+    if (slow) speak([item.word], 0.5, { interrupt });
+    else if (item.sentence) speak([item.word, item.sentence, item.word], 0.85, { interrupt });
+    else speak([item.word, item.word], 0.85, { interrupt });
   }
 
   function setBubble(text) {
@@ -1756,34 +1738,6 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
      Grown-ups area
      ============================================================ */
 
-  let gateAnswer = 0;
-
-  function openGate() {
-    const a = 13 + Math.floor(Math.random() * 7);
-    const b = 3 + Math.floor(Math.random() * 7);
-    gateAnswer = a * b;
-    $('gateQuestion').textContent = `${a} × ${b} = ?`;
-    $('gateInput').value = '';
-    $('gateInput').classList.remove('shake');
-    $('gateOverlay').hidden = false;
-    setTimeout(() => $('gateInput').focus(), 50);
-  }
-
-  function onGateSubmit(event) {
-    event.preventDefault();
-    const input = $('gateInput');
-    if (Number(input.value.trim()) === gateAnswer) {
-      $('gateOverlay').hidden = true;
-      input.blur();
-      openSettings();
-    } else {
-      input.classList.remove('shake');
-      void input.offsetWidth;
-      input.classList.add('shake');
-      input.value = '';
-    }
-  }
-
   function openSettings() {
     stopSpeaking();
     PLAYERS.forEach((p) => {
@@ -1880,7 +1834,7 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
      ============================================================ */
 
   function anyOverlayOpen() {
-    return !$('feedOverlay').hidden || !$('gateOverlay').hidden || !$('settingsOverlay').hidden;
+    return !$('feedOverlay').hidden || !$('settingsOverlay').hidden;
   }
 
   $('playBtn').addEventListener('click', startRound);
@@ -1889,22 +1843,20 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
     if (currentScreen === 'play' && !window.confirm('Stop this round and go back to the start?')) return;
     goHome();
   });
-  $('speakBtn').addEventListener('click', () => { if (round.current) sayCurrentWord(false); });
-  $('slowBtn').addEventListener('click', () => { if (round.current) sayCurrentWord(true); });
+  $('speakBtn').addEventListener('click', () => { if (round.current) sayCurrentWord(false, true); });
+  $('slowBtn').addEventListener('click', () => { if (round.current) sayCurrentWord(true, true); });
   $('hideBtn').addEventListener('click', onHide);
   $('changePlayerBtn').addEventListener('click', () => {
     stopSpeaking();
     showScreen('players');
   });
 
-  $('grownUpsBtn').addEventListener('click', openGate);
-  $('gateForm').addEventListener('submit', onGateSubmit);
-  $('gateCancel').addEventListener('click', () => { $('gateOverlay').hidden = true; });
+  $('grownUpsBtn').addEventListener('click', openSettings);
   $('saveWordsBtn').addEventListener('click', onSaveWords);
   $('closeSettingsBtn').addEventListener('click', () => { $('settingsOverlay').hidden = true; });
   function testVoice() {
     const sample = currentWords()[0] ? currentWords()[0].word : 'because';
-    speak([`Hello! Let's practise our spellings. Your first word is ${sample}.`]);
+    speak([`Hello! Let's practise our spellings. Your first word is ${sample}.`], 0.85, { interrupt: true });
   }
   $('testVoiceBtn').addEventListener('click', testVoice);
   $('voiceSelect').addEventListener('change', (event) => {

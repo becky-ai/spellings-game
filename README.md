@@ -14,7 +14,7 @@ Players and animals are set in the `PLAYERS` list near the top of the script in 
 Everything is in one file, `index.html`. It has no install, no account and no internet calls.
 
 ## Adding this week's words
-1. Tap **⚙️ Grown-ups** (top right) and answer the multiplication question.
+1. Tap **⚙️ Grown-ups** (top right).
 2. There is a box for each child. Type one word per line. To have a word read the way a spelling test reads it (word, sentence, word), add a sentence after a `|`:
    ```
    said
