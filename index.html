@@ -1280,7 +1280,7 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
   /** Says the current word. Pass interrupt when a button tap should cut in over other speech. */
   function sayCurrentWord(slow, interrupt = false) {
     const { item } = round.current;
-    if (slow) speak([item.word], 0.5, { interrupt });
+    if (slow) speak([item.word], 0.3, { interrupt });
     else if (item.sentence) speak([item.word, item.sentence, item.word], 0.85, { interrupt });
     else speak([item.word, item.word], 0.85, { interrupt });
   }
