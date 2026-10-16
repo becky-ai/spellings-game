@@ -673,10 +673,15 @@
         <select class="voice-select" id="voiceSelect" aria-label="Choose a voice"></select>
         <button class="btn" id="testVoiceBtn">🔊 Test voice</button>
       </div>
+      <p class="voice-status" id="voiceTestResult" role="status"></p>
       <p class="help voice-more">
+        <strong>No sound on iPhone?</strong> Turn off Silent mode (the switch on the side, or the bell in Control Centre)
+        and turn the volume up. iPhones mute speech from websites in Silent mode.<br>
         <strong>Want more voices?</strong><br>
-        <strong>iPad:</strong> Settings → Accessibility → Spoken Content → Voices → English → English (UK).
-        Download a voice (Kate, Serena, Stephanie and Martha are women's voices), then reload this page.<br>
+        <strong>iPhone / iPad:</strong> Settings → Accessibility → Spoken Content → Voices → English → English (UK).
+        Download a voice (Kate, Serena, Stephanie and Martha are women's voices). Then <em>fully close</em> Safari or the
+        Home Screen app (swipe it away in the app switcher) and open it again – the voice list is only read when it starts.
+        If the voice still isn't listed, restart the phone.<br>
         <strong>Android:</strong> Settings → search "Text-to-speech" → Google → install English (United Kingdom).
         Tap the ⚙️ next to it to choose which UK voice is used.
       </p>
@@ -1107,15 +1112,36 @@
 
   let speechGeneration = 0;
   let cancelGapUntil = 0;
+  // Utterances we have queued and not yet heard finish. Holding them also stops some browsers
+  // garbage-collecting an utterance before its end event fires.
+  const activeUtterances = new Set();
+  let lastSpeechEvent = 0;
+
+  /**
+   * True when the browser says it is busy but none of our speech is moving, which happens on iOS
+   * after the app is backgrounded. Queuing behind that would leave the game silent.
+   */
+  function speechStuck(synth) {
+    if (!synth.speaking && !synth.pending) return false;
+    return activeUtterances.size === 0 || Date.now() - lastSpeechEvent > 10000;
+  }
 
   /**
    * Speaks a list of phrases in order. By default they queue after anything already being said,
    * so one line never cuts off another; pass { interrupt: true } to stop the current speech first.
+   * `onDone(error)` is called once, after the last phrase finishes or the first one fails.
    */
-  function speak(phrases, rate = 0.85, { interrupt = false } = {}) {
+  function speak(phrases, rate = 0.85, { interrupt = false, onStart = null, onDone = null } = {}) {
     if (!speechSupported) return;
     const synth = window.speechSynthesis;
     const generation = speechGeneration;
+    let finished = false;
+    const finish = (error) => {
+      if (finished) return;
+      finished = true;
+      setSpeaking(false);
+      if (onDone) onDone(error);
+    };
     const go = () => {
       if (generation !== speechGeneration) return;
       synth.resume();
@@ -1125,14 +1151,30 @@
         if (ukVoice) utterance.voice = ukVoice;
         utterance.rate = rate;
         utterance.pitch = 1.05;
-        if (index === 0) utterance.onstart = () => setSpeaking(true);
-        if (index === phrases.length - 1) {
-          utterance.onend = () => setSpeaking(false);
-          utterance.onerror = () => setSpeaking(false);
-        }
+        const settle = () => { activeUtterances.delete(utterance); lastSpeechEvent = Date.now(); };
+        utterance.onstart = () => {
+          lastSpeechEvent = Date.now();
+          if (index === 0) {
+            setSpeaking(true);
+            if (onStart) onStart();
+          }
+        };
+        utterance.onend = () => {
+          settle();
+          if (index === phrases.length - 1) finish(null);
+        };
+        utterance.onerror = (event) => {
+          settle();
+          // A cancel() reports 'interrupted' or 'canceled'; that isn't a fault worth showing.
+          const quiet = event.error === 'interrupted' || event.error === 'canceled';
+          finish(quiet ? null : event.error || 'error');
+        };
+        activeUtterances.add(utterance);
         synth.speak(utterance);
       });
+      lastSpeechEvent = Date.now();
     };
+    if (!interrupt && speechStuck(synth)) interrupt = true;
     if (interrupt && (synth.speaking || synth.pending)) {
       synth.cancel();
       // iOS can drop an utterance queued straight after cancel(), so leave a short gap.
@@ -1145,6 +1187,7 @@
 
   function stopSpeaking() {
     speechGeneration += 1;
+    activeUtterances.clear();
     if (speechSupported) window.speechSynthesis.cancel();
     setSpeaking(false);
   }
@@ -1836,9 +1879,25 @@
 
   $('grownUpsBtn').addEventListener('click', openSettings);
   $('closeSettingsBtn').addEventListener('click', () => { $('settingsOverlay').hidden = true; });
+  /** Reads a test sentence and reports under the voice picker whether anything was heard. */
   function testVoice() {
+    const result = $('voiceTestResult');
+    const show = (text, ok) => { result.textContent = text; result.className = `voice-status ${ok ? 'ok' : 'warn'}`; };
+    let started = false;
+    const silentTimer = setTimeout(() => {
+      if (!started) show('⚠️ Nothing played. On iPhone, check Silent mode is off – it mutes speech from websites.', false);
+    }, 3000);
+    show('Speaking…', true);
     const sample = currentWords()[0] ? currentWords()[0].word : 'because';
-    speak([`Hello! Let's practise our spellings. Your first word is ${sample}.`], 0.85, { interrupt: true });
+    speak([`Hello! Let's practise our spellings. Your first word is ${sample}.`], 0.85, {
+      interrupt: true,
+      onStart: () => { started = true; },
+      onDone: (error) => {
+        clearTimeout(silentTimer);
+        if (error) show(`⚠️ The voice failed (${error}). Try another voice, or close and reopen the app.`, false);
+        else if (started) show('✓ Voice works', true);
+      },
+    });
   }
   $('testVoiceBtn').addEventListener('click', testVoice);
   $('voiceSelect').addEventListener('change', (event) => {
