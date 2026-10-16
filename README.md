@@ -14,14 +14,13 @@ Players and animals are set in the `PLAYERS` list near the top of the script in 
 Everything is in one file, `index.html`. It has no install, no account and no internet calls.
 
 ## Adding this week's words
-1. Tap **⚙️ Grown-ups** (top right).
-2. There is a box for each child. Type one word per line. To have a word read the way a spelling test reads it (word, sentence, word), add a sentence after a `|`:
-   ```
-   said
-   because | I smiled because it was sunny
-   friend
-   ```
-3. Tap **Save spellings**. The words stay on that tablet until you change them.
+The words live in the `SPELLINGS` list near the top of the script in `index.html`, so every device gets the same words once the change is on `main`. One word per line; to have a word read the way a spelling test reads it (word, sentence, word), add a sentence after a `|`:
+```
+said
+because | I smiled because it was sunny
+friend
+```
+**⚙️ Grown-ups** (top right) shows each child's current list.
 
 Use the **Voice** drop-down to choose a British voice; it's marked "(woman)" or "(man)" where known. To get more voices, follow the steps on the settings screen for iPad or Android.
 
@@ -35,4 +34,4 @@ Use the **Voice** drop-down to choose a British voice; it's marked "(woman)" or 
 ## Putting it on the tablet
 The file needs to be opened from a web address. Opening it straight from the Files app doesn't work reliably. Once it is hosted (for example on GitHub Pages), open the link in Safari (iPad) or Chrome (Android). Then use **Share → Add to Home Screen** on iPad, or **⋮ → Add to Home screen** on Android, so it opens full-screen like an app.
 
-Note: words and treat counts are saved separately on each device, and separately for the Home Screen app and the browser tab.
+Note: treat counts and the chosen voice are saved separately on each device, and separately for the Home Screen app and the browser tab.

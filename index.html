@@ -515,19 +515,8 @@
   .settings-panel label { display: block; font-size: 18px; font-weight: 800; margin-bottom: 6px; }
   .help { font-size: 16px; color: var(--ink-soft); margin: 0 0 10px; line-height: 1.45; }
   .help code { background: #F1F5F9; padding: 1px 6px; border-radius: 6px; font-size: 15px; }
-  .word-input {
-    width: 100%;
-    font-family: inherit;
-    font-size: 20px;
-    line-height: 1.5;
-    padding: 12px 14px;
-    border-radius: 16px;
-    border: 3px solid #CBD5E1;
-    resize: vertical;
-    -webkit-user-select: text;
-    user-select: text;
-  }
-  .word-input:focus { outline: none; border-color: var(--blue); }
+  .word-list { margin: 0; padding-left: 1.4em; font-size: 20px; line-height: 1.6; }
+  .word-list .sentence { color: var(--ink-soft); font-size: 16px; }
   .settings-section { margin-top: 20px; padding-top: 16px; border-top: 2px solid #E2E8F0; }
   .voice-status { font-size: 17px; font-weight: 700; margin: 0 0 10px; }
   .voice-status.warn { color: var(--orange-dark); }
@@ -547,7 +536,6 @@
   .settings-row .btn { font-size: 18px; padding: 10px 20px; box-shadow: 0 4px 0 var(--yellow-dark); }
   .settings-row .btn-plain { box-shadow: 0 4px 0 #94A3B8; }
   .settings-row .btn-green { box-shadow: 0 4px 0 var(--green-dark); }
-  .form-error { color: var(--orange-dark); font-weight: 800; font-size: 17px; min-height: 1.4em; margin: 8px 0 0; }
 
   /* Confetti & toast */
   .confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 80; overflow: hidden; }
@@ -673,15 +661,8 @@
 <div class="overlay" id="settingsOverlay" hidden>
   <div class="panel settings-panel">
     <h2>This week's spellings</h2>
-    <p class="help">
-      One word per line. 
-You can add a sentence after a <code>|</code> and it will be read out like a spelling test:
-      word, sentence, word. For example: <code>because | I smiled because it was sunny</code>
-    </p>
     <div class="word-lists" id="wordLists"></div>
-    <p class="form-error" id="formError" role="alert"></p>
-    <div class="settings-row">
-      <button class="btn btn-green" id="saveWordsBtn">Save spellings</button>
+    <div class="settings-row" style="margin-top: 16px">
       <button class="btn btn-plain" id="closeSettingsBtn">Close</button>
     </div>
 
@@ -722,9 +703,19 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
      Data
      ============================================================ */
 
+  /**
+   * This week's spellings for each child. One word per line; add a sentence after a `|` to have it
+   * read like a spelling test (word, sentence, word). Letters, apostrophes and hyphens only.
+   */
+  const SPELLINGS = {
+    ava: `
+    `,
+    izzy: `
+    `,
+  };
+
   // Per-player keys are `${prefix}.${playerId}`. The un-suffixed keys are from the
   // single-player version and are migrated to Ava on first load.
-  const STORAGE_WORDS = 'spellings.words';
   const STORAGE_TREATS = 'spellings.animals';
   const STORAGE_VOICE = 'spellings.voice';
   const MAX_WORDS = 20;
@@ -935,13 +926,6 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
      Saved state
      ============================================================ */
 
-  function cleanWords(stored) {
-    if (!Array.isArray(stored)) return [];
-    return stored
-      .filter((item) => item && typeof item.word === 'string' && item.word.trim())
-      .map((item) => ({ word: item.word.trim(), sentence: typeof item.sentence === 'string' ? item.sentence.trim() : '' }));
-  }
-
   /** Loads a player's saved value, falling back to the single-player key for Ava. */
   function loadForPlayer(prefix, playerId, fallback) {
     const own = loadJson(`${prefix}.${playerId}`, null);
@@ -950,10 +934,30 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
     return fallback;
   }
 
+  /** Parses a SPELLINGS block into word objects. Returns an error message or the list. */
+  function parseWordList(text) {
+    const list = [];
+    for (const line of text.split('\n')) {
+      if (!line.trim()) continue;
+      const split = line.indexOf('|');
+      const word = (split === -1 ? line : line.slice(0, split)).trim();
+      const sentence = split === -1 ? '' : line.slice(split + 1).trim();
+      if (!word) continue;
+      if (!/^[A-Za-z' ‘’-]+$/.test(word)) {
+        return { error: `"${word}" has characters that can't be typed on the game keyboard. Use letters only (apostrophes and hyphens are fine).` };
+      }
+      list.push({ word, sentence });
+    }
+    if (list.length > MAX_WORDS) return { error: `That's ${list.length} words – please keep it to ${MAX_WORDS} or fewer.` };
+    return { list };
+  }
+
   const wordsByPlayer = {};
   const treatsByPlayer = {};
   PLAYERS.forEach((p) => {
-    wordsByPlayer[p.id] = cleanWords(loadForPlayer(STORAGE_WORDS, p.id, []));
+    const result = parseWordList(SPELLINGS[p.id] || '');
+    if (result.error) console.error(`${p.name}'s spellings: ${result.error}`);
+    wordsByPlayer[p.id] = result.list || [];
     const zeroes = Object.fromEntries(p.animals.map((a) => [a.id, 0]));
     treatsByPlayer[p.id] = Object.assign(zeroes, loadForPlayer(STORAGE_TREATS, p.id, {}));
   });
@@ -1212,7 +1216,7 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
     const info = $('startInfo');
     const playBtn = $('playBtn');
     if (words.length === 0) {
-      info.textContent = 'Ask a grown-up to add this week\'s spellings ⚙️';
+      info.textContent = 'No spellings yet this week';
       playBtn.disabled = true;
     } else {
       info.textContent = `${words.length} spelling${words.length === 1 ? '' : 's'} to practise. Your animals are hungry!`;
@@ -1740,71 +1744,32 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
 
   function openSettings() {
     stopSpeaking();
-    PLAYERS.forEach((p) => {
-      $(`wordInput-${p.id}`).value = wordsByPlayer[p.id]
-        .map((w) => (w.sentence ? `${w.word} | ${w.sentence}` : w.word)).join('\n');
-    });
-    $('formError').textContent = '';
     refreshVoice();
     $('settingsOverlay').hidden = false;
   }
 
-  /** Parses the text box into word objects. Returns an error message or the list. */
-  function parseWordList(text) {
-    const list = [];
-    for (const line of text.split('\n')) {
-      if (!line.trim()) continue;
-      const split = line.indexOf('|');
-      const word = (split === -1 ? line : line.slice(0, split)).trim();
-      const sentence = split === -1 ? '' : line.slice(split + 1).trim();
-      if (!word) continue;
-      if (!/^[A-Za-z' ‘’-]+$/.test(word)) {
-        return { error: `"${word}" has characters that can't be typed on the game keyboard. Use letters only (apostrophes and hyphens are fine).` };
-      }
-      list.push({ word, sentence });
-    }
-    if (list.length > MAX_WORDS) return { error: `That's ${list.length} words – please keep it to ${MAX_WORDS} or fewer.` };
-    return { list };
-  }
-
-  /** Builds one word box per player in the grown-ups screen. */
-  function buildWordInputs() {
+  /** Lists each player's words in the grown-ups screen. */
+  function buildWordLists() {
     const lists = $('wordLists');
     PLAYERS.forEach((p) => {
       const wrapper = make('div');
       const label = make('label', '', `${p.name}'s spellings`);
-      label.htmlFor = `wordInput-${p.id}`;
       label.style.color = p.dark;
-      const textarea = make('textarea', 'word-input');
-      textarea.id = `wordInput-${p.id}`;
-      textarea.rows = 10;
-      textarea.placeholder = 'said\nbecause | I smiled because it was sunny\nfriend';
-      ['autocomplete', 'autocorrect', 'autocapitalize'].forEach((attr) => textarea.setAttribute(attr, 'off'));
-      textarea.spellcheck = true;
-      wrapper.append(label, textarea);
+      wrapper.append(label);
+      const words = wordsByPlayer[p.id];
+      if (words.length === 0) {
+        wrapper.append(make('p', 'help', 'None yet this week.'));
+      } else {
+        const list = make('ol', 'word-list');
+        words.forEach((w) => {
+          const li = make('li', '', w.word);
+          if (w.sentence) li.append(make('div', 'sentence', w.sentence));
+          list.append(li);
+        });
+        wrapper.append(list);
+      }
       lists.append(wrapper);
     });
-  }
-
-  function onSaveWords() {
-    const parsed = {};
-    for (const p of PLAYERS) {
-      const result = parseWordList($(`wordInput-${p.id}`).value);
-      if (result.error) {
-        $('formError').textContent = `${p.name}: ${result.error}`;
-        return;
-      }
-      parsed[p.id] = result.list;
-    }
-    let saved = true;
-    PLAYERS.forEach((p) => {
-      wordsByPlayer[p.id] = parsed[p.id];
-      saved = saveJson(`${STORAGE_WORDS}.${p.id}`, parsed[p.id]) && saved;
-    });
-    $('settingsOverlay').hidden = true;
-    const summary = PLAYERS.map((p) => `${p.name} ${parsed[p.id].length}`).join(', ');
-    showToast(saved ? `Saved ✓  ${summary}` : 'Saved for now, but this browser could not remember them');
-    goHome();
   }
 
   function onResetTreats() {
@@ -1852,7 +1817,6 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
   });
 
   $('grownUpsBtn').addEventListener('click', openSettings);
-  $('saveWordsBtn').addEventListener('click', onSaveWords);
   $('closeSettingsBtn').addEventListener('click', () => { $('settingsOverlay').hidden = true; });
   function testVoice() {
     const sample = currentWords()[0] ? currentWords()[0].word : 'because';
@@ -1897,7 +1861,7 @@ You can add a sentence after a <code>|</code> and it will be read out like a spe
     if (document.hidden) stopSpeaking();
   });
 
-  buildWordInputs();
+  buildWordLists();
   renderPlayers();
   showScreen('players');
 })();
